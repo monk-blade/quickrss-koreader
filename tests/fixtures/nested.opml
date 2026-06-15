@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<opml version="1.0">
+  <head><title>Nested Test</title></head>
+  <body>
+    <outline text="Root Feed" type="rss" xmlUrl="https://example.com/root.xml"/>
+    <outline text="News">
+      <outline text="Feed One" type="rss" xmlUrl="https://example.com/one.xml"/>
+      <outline text="Tech">
+        <outline text="Feed Two" type="rss" xmlUrl="https://example.com/two.xml"/>
+      </outline>
+    </outline>
+  </body>
+</opml>

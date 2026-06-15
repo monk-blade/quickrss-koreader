@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>Test Feed</title>
+    <item>
+      <title>Hello &amp; World</title>
+      <link>https://example.com/article-1</link>
+      <pubDate>Mon, 01 Mar 2026 12:00:00 +0000</pubDate>
+      <description><![CDATA[<p>First paragraph.</p>]]></description>
+    </item>
+    <item>
+      <title>Second Post</title>
+      <link>https://example.com/article-2</link>
+      <pubDate>Sun, 28 Feb 2026 08:30:00 +0000</pubDate>
+      <description>Plain text summary.</description>
+    </item>
+  </channel>
+</rss>
