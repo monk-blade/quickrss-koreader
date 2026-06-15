@@ -51,6 +51,7 @@ local Screen = Device.screen
 -- ─────────────────────────────────────────────────────────────────────────────
 local QuickRSSUI = InputContainer:extend{
     name               = "quickrss_ui",
+    ui                 = nil,   -- KOReader app ui (dictionary / wikipedia)
     show_page          = 1,
     articles           = {},     -- all articles (unfiltered)
     filtered           = nil,    -- filtered subset, or nil when showing all
@@ -728,6 +729,7 @@ function QuickRSSUI:_populateItems()
                         article       = article,
                         articles      = articles,
                         article_index = i,
+                        ui            = self.ui,
                         on_read = function(art)
                             art.read = true
                             Cache.markRead(art.link)

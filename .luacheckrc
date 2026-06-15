@@ -21,6 +21,7 @@ globals = {
     "rawset",
     "_G",
     "_",
+    "G_reader_settings",
 }
 max_line_length = 140
 ignore = {

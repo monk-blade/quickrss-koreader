@@ -35,7 +35,8 @@ local Size             = require("ui/size")
 local TitleBar         = require("ui/widget/titlebar")
 local UIManager        = require("ui/uimanager")
 local VerticalGroup    = require("ui/widget/verticalgroup")
-local _                = require("gettext")
+local Event              = require("ui/event")
+local _                  = require("gettext")
 
 local Screen    = Device.screen
 local IMAGE_DIR = Images.IMAGE_DIR
@@ -127,6 +128,7 @@ local ArticleReader = InputContainer:extend{
     articles      = nil,   -- optional: full list for prev/next navigation
     article_index = 0,     -- position of `article` within `articles`
     on_read       = nil,   -- optional: function(article) when an article is opened
+    ui            = nil,   -- KOReader app ui (dictionary lookups)
 }
 
 function ArticleReader:init()
@@ -329,14 +331,9 @@ function ArticleReader:init()
     -- replace the scroll widget regardless of what precedes it.
     self.layout_group = VerticalGroup:new{ align = "left", title_bar }
     self.scroll_idx = #self.layout_group + 1
-    table.insert(self.layout_group, ScrollHtmlWidget:new{
-        html_body               = self.html,
-        css                     = makeCSS(self.prefs),
-        width                   = self.scroll_w,
-        height                  = self.scroll_h,
-        dialog                  = self,
-        html_resource_directory = IMAGE_DIR,
-    })
+    self.scroll_widget = self:_makeScrollWidget()
+    table.insert(self.layout_group, self.scroll_widget)
+    self:_registerTextSelectionGestures()
     if nav_footer_widget then
         table.insert(self.layout_group, nav_footer_widget)
     end
@@ -350,6 +347,88 @@ function ArticleReader:init()
         background = Blitbuffer.COLOR_WHITE,
         self.layout_group,
     }
+end
+
+function ArticleReader:_makeScrollWidget()
+    return ScrollHtmlWidget:new{
+        html_body               = self.html,
+        css                     = makeCSS(self.prefs),
+        width                   = self.scroll_w,
+        height                  = self.scroll_h,
+        dialog                  = self,
+        html_resource_directory = IMAGE_DIR,
+    }
+end
+
+function ArticleReader:_htmlBox()
+    return self.scroll_widget and self.scroll_widget.htmlbox_widget
+end
+
+-- Hold on a word (or drag to select) → dictionary lookup.
+function ArticleReader:_registerTextSelectionGestures()
+    if not Device:isTouchDevice() then return end
+
+    local hold_pan_rate = G_reader_settings:readSetting("hold_pan_rate")
+    if not hold_pan_rate then
+        hold_pan_rate = Screen.low_pan_rate and 5.0 or 30.0
+    end
+
+    local range_fn = function()
+        return self.scroll_widget and self.scroll_widget.dimen
+    end
+
+    self.ges_events.HoldStartText = {
+        GestureRange:new{ ges = "hold", range = range_fn },
+    }
+    self.ges_events.HoldPanText = {
+        GestureRange:new{
+            ges  = "hold_pan",
+            range = range_fn,
+            rate = hold_pan_rate,
+        },
+    }
+    self.ges_events.HoldReleaseText = {
+        GestureRange:new{ ges = "hold_release", range = range_fn },
+        args = function(text, _hold_duration)
+            self:_onTextHoldRelease(text)
+        end,
+    }
+end
+
+function ArticleReader:onHoldStartText(arg, ges)
+    local box = self:_htmlBox()
+    if box then return box:onHoldStartText(arg, ges) end
+end
+
+function ArticleReader:onHoldPanText(arg, ges)
+    local box = self:_htmlBox()
+    if box then return box:onHoldPanText(arg, ges) end
+end
+
+function ArticleReader:onHoldReleaseText(callback, ges)
+    local box = self:_htmlBox()
+    if box then return box:onHoldReleaseText(callback, ges) end
+end
+
+function ArticleReader:_onTextHoldRelease(text)
+    if not text or text == "" then return end
+
+    local box = self:_htmlBox()
+    local dict_close_callback
+    if box then
+        dict_close_callback = function()
+            box:scheduleClearHighlightAndRedraw()
+        end
+    end
+
+    if self.ui then
+        self.ui:handleEvent(Event:new(
+            "LookupWord", text, nil, nil, nil, nil, dict_close_callback))
+    else
+        local ReaderDictionary = require("apps/reader/modules/readerdictionary")
+        ReaderDictionary:new{ ui = nil }
+            :onLookupWord(text, false, nil, nil, nil, dict_close_callback)
+    end
 end
 
 function ArticleReader:_openArticleMenu()
@@ -472,14 +551,8 @@ end
 
 function ArticleReader:_applyPrefs(prefs)
     self.prefs = prefs
-    self.layout_group[self.scroll_idx] = ScrollHtmlWidget:new{
-        html_body               = self.html,
-        css                     = makeCSS(prefs),
-        width                   = self.scroll_w,
-        height                  = self.scroll_h,
-        dialog                  = self,
-        html_resource_directory = IMAGE_DIR,
-    }
+    self.scroll_widget = self:_makeScrollWidget()
+    self.layout_group[self.scroll_idx] = self.scroll_widget
     self.layout_group:resetLayout()
     UIManager:setDirty(self, function() return "full", self.dimen end)
 end
@@ -525,6 +598,7 @@ function ArticleReader:_navigateTo(new_idx)
         articles      = self.articles,
         article_index = new_idx,
         on_read       = self.on_read,
+        ui            = self.ui,
     })
 end
 

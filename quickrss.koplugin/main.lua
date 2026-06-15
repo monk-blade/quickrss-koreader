@@ -24,7 +24,7 @@ function QuickRSS:addToMainMenu(menu_items)
         sorting_hint = "search",
         callback = function()
             local QuickRSSUI = require("modules/ui/feed_view")
-            UIManager:show(QuickRSSUI:new{})
+            UIManager:show(QuickRSSUI:new{ ui = self.ui })
         end,
     }
 end
